@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Fino — учет доходов и расходов</title>
 <meta name="theme-color" content="#ffffff">
 <meta name="description" content="Fino — личный учет доходов и расходов. Made in Kazakhstan.">
@@ -29,6 +29,9 @@
   --nav-h:64px;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+button,a,label,select,input{touch-action:manipulation}
+@media (pointer:coarse){.field input,.field select,.field textarea,.search input,select.sel,.pv-note,.pv-amt input,textarea{font-size:16px}}
 html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.4;-webkit-font-smoothing:antialiased}
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer;border:0;background:none;padding:0}
@@ -415,6 +418,12 @@ details.paste summary{cursor:pointer;font-size:13px;font-weight:500;color:var(--
 <script>
 (function(){
 'use strict';
+
+/* ================= No zoom (pinch / double-tap) ================= */
+['gesturestart','gesturechange','gestureend'].forEach(ev=>document.addEventListener(ev,e=>e.preventDefault(),{passive:false}));
+document.addEventListener('touchmove',e=>{ if(e.touches&&e.touches.length>1) e.preventDefault(); },{passive:false});
+let lastTouchEnd=0;
+document.addEventListener('touchend',e=>{ const now=Date.now(); if(now-lastTouchEnd<300&&!e.target.closest('input,textarea,select,button,a,label,[data-edit],[data-pick]')) e.preventDefault(); lastTouchEnd=now; },{passive:false});
 
 /* ================= Splash ================= */
 const splash=document.getElementById('splash');
@@ -1139,7 +1148,7 @@ async function parseStatement(file){
   if(name.endsWith('.pdf')||file.type==='application/pdf'){
     const lines=await pdfToLines(buf); text=lines.map(l=>l.text).join('\n'); ops=linesToOps(lines);
   } else if(/\.(xlsx|xls|xlsm|ods)$/.test(name)){
-    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
+    try{ await loadScript('lib/xlsx.full.min.js'); }catch(e){ await loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'); }
     const wb=XLSX.read(new Uint8Array(buf),{type:'array'}); let rows=[];
     wb.SheetNames.forEach(n=>{ rows=rows.concat(XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,raw:true,defval:''})); });
     text=rows.slice(0,40).map(r=>r.join(' ')).join('\n');
