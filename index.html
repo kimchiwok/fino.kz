@@ -211,10 +211,23 @@ body.junior .set-row:has([data-act="statement"]),body.junior .set-row:has([data-
 .overlay.mini .sheet>*:not(.grab){display:none!important}
 .overlay.mini .sheet::after{content:'Окно свёрнуто · нажмите, чтобы вернуться';display:block;text-align:center;font-size:13px;font-weight:500;color:var(--ink-2);padding:2px 0 2px}
 .back-btn{color:var(--s1);font-weight:600;font-size:14px;padding:4px 0;margin:-4px 0 6px;display:inline-flex;align-items:center;gap:4px;min-height:36px}
+
+/* ---------- Таблицы долгов (фиксированные) ---------- */
+.dbt table.dtbl{table-layout:fixed;width:100%}
+.dbt .dtbl th,.dbt .dtbl td{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:8px 5px}
+.dbt .dtbl.sched col.c-d{width:21%}.dbt .dtbl.sched col.c-a{width:19%}.dbt .dtbl.sched col.c-i{width:17%}.dbt .dtbl.sched col.c-b{width:24%}
+.dbt .dtbl.sched td:first-child,.dbt .dtbl.sched th:first-child{text-align:left;padding-left:8px}
+.dbt .dsched{max-height:440px;overflow-y:auto;overflow-x:hidden;overscroll-behavior:auto;border:1px solid var(--line);border-radius:12px}
+.dbt .dsched thead th{position:sticky;top:0;background:var(--card);z-index:1;box-shadow:0 1px 0 var(--line)}
+.dbt .dcap{font-size:11.5px;margin-top:8px}
+.dbt .dtbl.dupc col.c-d{width:27%}.dbt .dtbl.dupc col.c-p{width:30%}
+.dbt .dtbl.dupc td{vertical-align:top}.dbt .dtbl.dupc td.nm,.dbt .dtbl.dupc th:nth-child(2){white-space:normal;text-align:left}
+.dbt .dtbl .sub{display:block;font-size:11px;color:var(--ink-3);font-weight:400;white-space:normal}
+@media (max-width:560px){.dbt .dtbl{font-size:11.5px}.dbt .dtbl th,.dbt .dtbl td{padding:7px 2px}.dbt .dtbl.sched td:last-child,.dbt .dtbl.sched th:last-child{padding-right:6px}}
 /* ---------- Layout ---------- */
 .app{min-height:100vh;display:flex}
 .side{display:none}
-.main{flex:1;min-width:0;max-width:1080px;margin:0 auto;padding:calc(14px + var(--safe-t)) 18px calc(var(--nav-h) + 34px + var(--safe-b))}
+.main{flex:1;min-width:0;max-width:1080px;margin:0 auto;align-self:flex-start;min-height:100%;box-sizing:border-box;padding:calc(14px + var(--safe-t)) 18px calc(var(--nav-h) + 34px + var(--safe-b))}
 header.top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
 .brand{font-size:26px;font-weight:800;letter-spacing:-.045em}
 .period{display:flex;align-items:center;gap:4px;background:var(--surface);border-radius:999px;padding:4px}
@@ -597,7 +610,7 @@ details.paste summary{cursor:pointer;font-size:13px;font-weight:500;color:var(--
 (function(){try{var s=JSON.parse(localStorage.getItem('fino.v1')||'{}');var t=(s.settings&&s.settings.theme)||'system';if(t==='system')t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.dataset.theme=t;}catch(e){}})();
 </script>
 <script type="module" src="cloud.js?v=12"></script>
-<script src="debts.js?v=12"></script>
+<script src="debts.js?v=19"></script>
 <script src="junior.js?v=12"></script>
 <script>
 (function(){

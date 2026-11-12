@@ -167,6 +167,8 @@ function heuristicParse(text){
 }
 /* ================= Долги — интерфейс ================= */
 const F=()=>window.__fino;
+const num=v=>{if(v==null||v==='')return 0;if(typeof v==='number')return v;const n=parseFloat(String(v).replace(/[\s\u00a0]/g,'').replace(',','.'));return isNaN(n)?0:n;};
+const tm=v=>nf0.format(Math.round(v||0));
 const D=()=>{const S=F().S(); if(!S.debts) S.debts={loans:[],settings:{}}; const st=S.debts.settings; if(st.depositRate==null) st.depositRate=13; if(st.emergency==null) st.emergency=3; if(!Array.isArray(S.debts.loans)) S.debts.loans=[]; return S.debts;};
 const loans=()=>D().loans;
 const CUR={KZT:'₸',USD:'$',EUR:'€',RUB:'₽'};
@@ -176,6 +178,7 @@ const money=(n,c)=>(n<0?'−':'')+nf0.format(Math.abs(Math.round(n||0)))+' '+(c|
 const pct=n=>n?nf2.format(n)+'%':'0%';
 const fd=ds=>{if(!ds)return '—';const [y,m,d]=parts(ds);return `${pad(d)}.${pad(m)}.${y}`;};
 const MON=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+const fds=ds=>{if(!ds)return '—';const [y,m,d]=parts(ds);return `${pad(d)}.${pad(m)}.${String(y).slice(2)}`;};
 const fm=ds=>{if(!ds)return '—';const [y,m]=parts(ds);return `${MON[m-1]} ${y}`;};
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4);
@@ -223,7 +226,7 @@ function html(){
   const L=st.loanId&&loans().find(x=>x.id===st.loanId); if(st.loanId&&!L) st.loanId=null;
   const head=`<div class="title-row"><div class="view-title">Долги</div><button class="btn sm dark" data-d="add">＋ Добавить</button></div>`;
   if(!loans().length) return head+viewEmpty();
-  if(L) return head+viewLoan(L);
+  if(L) return head+'<div class="dbt">'+viewLoan(L)+'</div>';
   const tabs=[['overview','Обзор'],['early','Досрочка'],['strategy','Стратегия'],['tips','Советы']];
   const body=st.tab==='early'?viewEarly():st.tab==='strategy'?viewStrategy():st.tab==='tips'?viewTips():viewOverview();
   return head+`<div class="seg dbt-tabs">${tabs.map(([k,l])=>`<button data-dt="${k}" class="${st.tab===k?'on':''}">${l}</button>`).join('')}</div><div class="dbt">${body}</div>`;
@@ -274,7 +277,7 @@ function viewOverview(){
     <div class="dmeta"><div><span>Взято</span><b>${money(s.principal,cc)}</b></div><div><span>Осталось</span><b>${money(s.balance,cc)}</b></div>
     <div><span>Платёж</span><b>${s.next?money(s.next.pay,cc):'—'}</b><span>${s.next?fd(s.next.d):''}</span></div><div><span>Переплата</span><b>${money(s.totalInt,cc)}</b><span>уже ${money(s.intPaid,cc)}</span></div></div></button>`;};
   const rowT=({L,s})=>{const cc=cur(L),k=KINDS[kindOf(L)];return `<tr class="${s.closed?'paid':''}" data-loan="${L.id}"><td>${k[1]} <b>${esc(L.name)}</b><div class="muted" style="font-size:11px">${k[0]}${L.bank?' · '+esc(L.bank):''}</div></td><td>${money(s.principal,cc)}</td><td>${money(s.paidTotal,cc)}</td><td><b>${money(s.balance,cc)}</b></td><td>${s.next?money(s.next.pay,cc):'—'}</td><td>${pct(+L.gesv||+L.rate)}</td><td>${s.closed?'✓ '+fm(s.endDate):fm(s.endDate)}</td><td style="width:80px"><div class="dbar" style="margin:0"><i style="width:${(s.progress*100).toFixed(0)}%"></i></div></td></tr>`;};
-  const up=[]; for(const {L,s} of open) for(const r of s.left) if(r.kind==='reg'&&days(TODAY(),r.d)<=35) up.push({L,r}); up.sort((a,b)=>a.r.d<b.r.d?-1:1);
+  const up=[]; for(const {L,s} of open){ let first=true; for(const r of s.left){ if(r.kind!=='reg') continue; if(first||days(TODAY(),r.d)<=92) up.push({L,r}); first=false; } } up.sort((a,b)=>a.r.d<b.r.d?-1:1);
   return `${chips}
   <div class="card dhero"><div class="lbl">Осталось погасить${Fk!=='all'?' · '+KINDS[Fk][0]:''}</div><div class="big num">${money(T.bal,c)}</div>
     <div class="sub">вместе с процентами впереди — ${money(T.left,c)}</div>
@@ -291,7 +294,7 @@ function viewOverview(){
     <tfoot><tr><td>Итого</td><td>${money(T.taken,c)}</td><td>${money(T.paid,c)}</td><td>${money(T.bal,c)}</td><td>${money(T.monthly,c)}</td><td></td><td></td><td>${(prog*100).toFixed(0)}%</td></tr></tfoot></table></div></div>
   <div class="mob"><div class="dbt-sub">Все обязательства</div><div class="grid">${open.map(card).join('')}</div>
   ${closed.length?`<div class="dbt-sub">Закрытые 🎉</div><div class="grid">${closed.map(card).join('')}</div>`:''}</div>
-  <div class="card"><h2>Ближайшие платежи</h2>${up.length?`<div class="scx"><table><thead><tr><th>Дата</th><th>Кредит</th><th>Платёж</th><th>Долг</th><th>Проценты</th></tr></thead><tbody>${up.map(({L,r})=>`<tr><td>${fd(r.d)} <span class="muted">· ${days(TODAY(),r.d)} дн.</span></td><td>${esc(L.name)}</td><td><b>${money(r.pay,cur(L))}</b></td><td>${money(r.prin,cur(L))}</td><td>${money(r.int,cur(L))}</td></tr>`).join('')}</tbody></table></div>`:'<div class="muted">В ближайший месяц платежей нет.</div>'}
+  <div class="card"><h2>Ближайшие платежи <span class="muted" style="font-size:13px;font-weight:500">3 месяца</span></h2>${up.length?`<table class="dtbl dupc"><colgroup><col class="c-d"><col><col class="c-p"></colgroup><thead><tr><th>Дата</th><th>Долг</th><th>Платёж</th></tr></thead><tbody>${up.map(({L,r})=>`<tr><td>${fd(r.d)}<span class="sub">через ${days(TODAY(),r.d)} дн.</span></td><td class="nm">${esc(L.name)}<span class="sub">долг ${tm(r.prin)} · % ${tm(r.int)}</span></td><td><b>${money(r.pay,cur(L))}</b></td></tr>`).join('')}</tbody><tfoot><tr><td>Итого</td><td></td><td>${money(sum(up,x=>x.r.pay),c)}</td></tr></tfoot></table>`:'<div class="muted">Платежей впереди нет.</div>'}
   <div class="muted" style="margin-top:10px;font-size:12px">🔄 В день платежа сумма сама списывается с остатка — отмечать ничего не нужно.</div></div>`;
 }
 function bindOverview(el){
@@ -302,17 +305,19 @@ function bindOverview(el){
 function salarySheet(){
   const si=salaryInfo();
   F().openSheet(`<h3>Зарплата в месяц<button class="x" data-close aria-label="Закрыть">${X}</button></h3>
-    <div class="field"><label>На руки, после налогов</label><input type="number" inputmode="numeric" id="smV" value="${+D().settings.salary||''}" placeholder="${si.src==='fino'?Math.round(si.v):''}"></div>
+    <div class="field"><label>На руки, после налогов</label><input type="text" inputmode="decimal" autocomplete="off" id="smV" value="${+D().settings.salary||''}" placeholder="${si.src==='fino'?Math.round(si.v):''}"></div>
     <div class="muted">Оставь пустым — возьму среднюю зарплату за последние 3 месяца из доходов (категория «Зарплата»).</div>
     <div class="btn-row" style="justify-content:flex-end"><button class="btn" data-close>Отмена</button><button class="btn dark" id="smOk">Сохранить</button></div>`,sh=>{
-    sh.querySelector('#smOk').onclick=()=>{D().settings.salary=+sh.querySelector('#smV').value||0;F().closeSheet();save();};});
+    sh.querySelector('#smOk').onclick=()=>{D().settings.salary=num(sh.querySelector('#smV').value)||0;F().closeSheet();save();};});
 }
 
 /* ---------- loan detail ---------- */
 function schedTable(L,s){
-  const c=cur(L),t=TODAY(); let nx=false;
-  return `<div class="scx dsched"><table><thead><tr><th>Дата</th><th>Платёж</th><th>Долг</th><th>Проценты</th><th>Остаток</th><th></th></tr></thead><tbody>${s.rows.map(r=>{const paid=r.d<=t;let cl=r.kind==='early'?'early':(paid?'paid':'');if(!paid&&r.kind==='reg'&&!nx){cl+=' next';nx=true;}
-    return `<tr class="${cl}"><td>${fd(r.d)}</td><td>${money(r.pay,c)}</td><td>${money(r.prin,c)}</td><td>${money(r.int,c)}</td><td>${money(r.bal,c)}</td><td style="font-size:11px">${r.kind==='early'?(paid?'досрочно ✓':'досрочно, план'):(paid?'✓':'')}</td></tr>`;}).join('')}</tbody></table></div>`;
+  const t=TODAY(); let nx=false;
+  return `<div class="dsched"><table class="dtbl sched"><colgroup><col class="c-d"><col class="c-a"><col class="c-a"><col class="c-i"><col class="c-b"></colgroup>
+  <thead><tr><th>Дата</th><th>Платёж</th><th>Долг</th><th>%</th><th>Остаток</th></tr></thead><tbody>${s.rows.map(r=>{const paid=r.d<=t;let cl=r.kind==='early'?'early':(paid?'paid':'');if(!paid&&r.kind==='reg'&&!nx){cl+=' next';nx=true;}
+    return `<tr class="${cl}"><td>${fds(r.d)}</td><td>${tm(r.pay)}</td><td>${tm(r.prin)}</td><td>${tm(r.int)}</td><td>${tm(r.bal)}</td></tr>`;}).join('')}</tbody></table></div>
+  <div class="muted dcap">Суммы в ${cur(L)} · серым — оплачено · голубым — досрочное погашение · жирным — следующий</div>`;
 }
 function viewLoan(L){
   const s=stats(L,TODAY()),c=cur(L),k=KINDS[kindOf(L)];
@@ -332,7 +337,7 @@ function viewLoan(L){
    </div>${L.notes?`<div class="dnote">📌 ${esc(L.notes)}</div>`:''}</div>
   <div class="card"><h2>Остаток долга</h2><div class="dleg"><span><i style="background:var(--s1)"></i>Фактически</span><span><i style="background:var(--s2)"></i>По графику банка</span></div><div class="dchart" id="dch1"></div></div>
   <div class="card"><h2>Досрочное погашение</h2>
-    <div class="dform"><div class="field"><label>Дата</label><input type="date" id="eD" value="${TODAY()}"></div><div class="field"><label>Сумма, ${c}</label><input type="number" inputmode="numeric" id="eA" placeholder="100000"></div>
+    <div class="dform"><div class="field"><label>Дата</label><input type="date" id="eD" value="${TODAY()}"></div><div class="field"><label>Сумма, ${c}</label><input type="text" inputmode="decimal" autocomplete="off" id="eA" placeholder="100000"></div>
     <div class="field"><label>Режим</label><select id="eM"><option value="term">Сокращение срока</option><option value="payment">Уменьшение платежа</option></select></div><div class="field"><label>&nbsp;</label><button class="btn dark" id="eAdd" style="width:100%">Записать</button></div></div>
     <div id="ePrev" class="dnote good" style="display:none"></div>
     ${early.length?`<div class="scx"><table><thead><tr><th>Дата</th><th>Сумма</th><th>Режим</th><th></th></tr></thead><tbody>${early.map(e=>`<tr><td>${fd(e.d)}</td><td>${money(e.amt,c)}</td><td>${e.mode==='payment'?'уменьшение платежа':'сокращение срока'}</td><td><button class="btn sm danger" data-edel="${e.id}">Удалить</button></td></tr>`).join('')}</tbody></table></div>`:'<div class="muted">Досрочных погашений пока не было.</div>'}</div>
@@ -345,11 +350,11 @@ function bindLoan(el,L){
   el.querySelector('[data-d="del"]').onclick=()=>F().openSheet(`<h3>Удалить «${esc(L.name)}»?<button class="x" data-close>${X}</button></h3><div class="muted">Все данные по этому долгу будут удалены.</div><div class="btn-row" style="justify-content:flex-end"><button class="btn" data-close>Отмена</button><button class="btn dark" id="dOk">Удалить</button></div>`,sh=>{sh.querySelector('#dOk').onclick=()=>{F().closeSheet();st.loanId=null;removeLoan(L.id);toast('Удалено');};});
   el.querySelectorAll('[data-edel]').forEach(b=>b.onclick=()=>{saveLoan({...L,early:(L.early||[]).filter(e=>e.id!==b.dataset.edel)});toast('Досрочка удалена');});
   const g=id=>el.querySelector('#'+id);
-  const prev=()=>{const a=+g('eA').value,d=g('eD').value,m=g('eM').value,box=g('ePrev');if(!(a>0)||!d){box.style.display='none';return;}
+  const prev=()=>{const a=num(g('eA').value),d=g('eD').value,m=g('eM').value,box=g('ePrev');if(!(a>0)||!d){box.style.display='none';return;}
     const now=stats(L,TODAY()),sc=scenario(L,TODAY(),{lump:a,lumpDate:d,mode:m});box.style.display='';
     box.innerHTML=`Экономия <b>${money(now.totalInt-sc.totalInt,c)}</b> · закрытие ${fm(sc.endDate)}${m==='payment'?` · новый платёж ≈ <b>${money(sc.newPayment,c)}</b>`:` · на ${mtxt(Math.max(0,monthsBetween(sc.endDate,now.endDate)))} раньше`}`;};
   ['eA','eD','eM'].forEach(id=>g(id).addEventListener('input',prev));
-  g('eAdd').onclick=()=>{const a=+g('eA').value,d=g('eD').value;if(!(a>0)||!d){toast('Укажи дату и сумму');return;}saveLoan({...L,early:[...(L.early||[]),{id:uid(),d,amt:a,mode:g('eM').value}]});toast('Досрочное погашение записано');};
+  g('eAdd').onclick=()=>{const a=num(g('eA').value),d=g('eD').value;if(!(a>0)||!d){toast('Укажи дату и сумму');return;}saveLoan({...L,early:[...(L.early||[]),{id:uid(),d,amt:a,mode:g('eM').value}]});toast('Досрочное погашение записано');};
   const s=stats(L,TODAY()); lineChart(g('dch1'),[{label:'Фактически',rows:s.rows,color:'var(--s1)'},{label:'По графику банка',rows:s.base,color:'var(--s2)'}],c);
 }
 
@@ -361,9 +366,9 @@ function viewEarly(){
   const L=loans().find(x=>x.id===e.loanId),c=cur(L);
   return `<div class="card"><div class="dform">
     <div class="field"><label>Кредит</label><select id="qL">${op.map(x=>`<option value="${x.id}" ${x.id===e.loanId?'selected':''}>${esc(x.name)} — ${pct(+x.gesv||+x.rate)}</option>`).join('')}</select></div>
-    <div class="field"><label>Разовый платёж, ${c}</label><input type="number" inputmode="numeric" id="qA" value="${e.lump||''}" placeholder="0"></div>
+    <div class="field"><label>Разовый платёж, ${c}</label><input type="text" inputmode="decimal" autocomplete="off" id="qA" value="${e.lump||''}" placeholder="0"></div>
     <div class="field"><label>Дата разового</label><input type="date" id="qD" value="${e.lumpDate}"></div>
-    <div class="field"><label>Каждый месяц сверху, ${c}</label><input type="number" inputmode="numeric" id="qM" value="${e.monthly||''}" placeholder="0"></div></div></div>
+    <div class="field"><label>Каждый месяц сверху, ${c}</label><input type="text" inputmode="decimal" autocomplete="off" id="qM" value="${e.monthly||''}" placeholder="0"></div></div></div>
   <div id="qOut"></div>
   <div class="card"><h2>Хочу закрыть к дате</h2><div class="dform"><div class="field"><label>Целевая дата</label><input type="date" id="qT" value="${e.target}"></div><div id="qTout" class="muted" style="align-self:center"></div></div></div>`;
 }
@@ -398,7 +403,7 @@ function targetOut(el){
 function bindEarly(el){
   const q=id=>el.querySelector('#'+id); if(!q('qL')) return;
   q('qL').onchange=()=>{st.early.loanId=q('qL').value;F().render();};
-  const upd=()=>{st.early.lump=+q('qA').value||0;st.early.lumpDate=q('qD').value||TODAY();st.early.monthly=+q('qM').value||0;earlyOut(el);};
+  const upd=()=>{st.early.lump=num(q('qA').value)||0;st.early.lumpDate=q('qD').value||TODAY();st.early.monthly=num(q('qM').value)||0;earlyOut(el);};
   ['qA','qD','qM'].forEach(id=>q(id).addEventListener('input',upd));
   q('qT').addEventListener('input',ev=>{st.early.target=ev.target.value;targetOut(el);});
   earlyOut(el);
@@ -409,7 +414,7 @@ function viewStrategy(){
   const op=openLoans(); if(!op.length) return '<div class="card soft empty"><div class="e1">Нет открытых долгов 🎉</div></div>';
   const S=st.strat;
   return `<div class="card"><div class="muted" style="margin-bottom:12px">Сколько свободных денег в месяц готов направлять на досрочку? Посчитаю порядок и когда станешь свободен от долгов.</div>
-  <div class="dform"><div class="field"><label>Свободно в месяц, ${cur(op[0])}</label><input type="number" inputmode="numeric" id="sE" value="${S.extra}"></div>
+  <div class="dform"><div class="field"><label>Свободно в месяц, ${cur(op[0])}</label><input type="text" inputmode="decimal" autocomplete="off" id="sE" value="${S.extra}"></div>
   <div class="field"><label>Освободившиеся платежи</label><select id="sR"><option value="1" ${S.rollover?'selected':''}>Перекидывать на следующий долг</option><option value="0" ${!S.rollover?'selected':''}>Не перекидывать</option></select></div></div></div><div id="sOut"></div>`;
 }
 function strategyOut(el){
@@ -426,7 +431,7 @@ function strategyOut(el){
 }
 function bindStrategy(el){
   const e=el.querySelector('#sE'); if(!e) return;
-  const upd=()=>{st.strat.extra=+e.value||0;st.strat.rollover=el.querySelector('#sR').value==='1';strategyOut(el);};
+  const upd=()=>{st.strat.extra=num(e.value)||0;st.strat.rollover=el.querySelector('#sR').value==='1';strategyOut(el);};
   e.addEventListener('input',upd); el.querySelector('#sR').onchange=upd; strategyOut(el);
 }
 
@@ -450,15 +455,15 @@ function viewTips(){
   tips.push(['📅','Удобнее всего — в день платежа','Так банк проще пересчитает график, и сумма сразу уйдёт в основной долг. Проверь в приложении банка минимальную сумму.']);
   tips.push(['🧾','После досрочки — новый график','Скачай обновлённый график в приложении банка и загрузи сюда — расчёты станут точными до тенге.']);
   return `<div class="card"><h2>Настройки</h2><div class="dform">
-    <div class="field"><label>Ставка по депозиту, %</label><input type="number" step="0.1" id="tD" value="${S.depositRate}"></div>
-    <div class="field"><label>Подушка, месяцев платежей</label><input type="number" id="tE" value="${S.emergency}"></div>
-    <div class="field"><label>Зарплата (на руки)</label><input type="number" inputmode="numeric" id="tS" value="${+S.salary||''}" placeholder="${salaryInfo().src==='fino'?Math.round(salaryInfo().v)+' — из доходов':''}"></div></div>
+    <div class="field"><label>Ставка по депозиту, %</label><input type="text" inputmode="decimal" id="tD" value="${S.depositRate}"></div>
+    <div class="field"><label>Подушка, месяцев платежей</label><input type="text" inputmode="numeric" id="tE" value="${S.emergency}"></div>
+    <div class="field"><label>Зарплата (на руки)</label><input type="text" inputmode="decimal" autocomplete="off" id="tS" value="${+S.salary||''}" placeholder="${salaryInfo().src==='fino'?Math.round(salaryInfo().v)+' — из доходов':''}"></div></div>
     <label class="dchk"><input type="checkbox" id="tF" ${S.toFino?'checked':''}><span><b>Записывать платежи в расходы</b><br><span class="muted">В день платежа появится расход в категории «Кредиты». Не включай, если загружаешь выписки из банка — платежи задвоятся.</span></span></label></div>
   <div class="card"><h2>Рекомендации</h2><div class="dtips">${tips.map(([i,t,p])=>`<div><span class="ic">${i}</span><div><b>${t}</b><p>${p}</p></div></div>`).join('')}</div></div>`;
 }
 function bindTips(el){
   const q=id=>el.querySelector('#'+id); let to;
-  const upd=()=>{const S=D().settings;S.depositRate=+q('tD').value||0;S.emergency=+q('tE').value||0;S.salary=+q('tS').value||0;clearTimeout(to);to=setTimeout(()=>save(),800);};
+  const upd=()=>{const S=D().settings;S.depositRate=num(q('tD').value)||0;S.emergency=num(q('tE').value)||0;S.salary=num(q('tS').value)||0;clearTimeout(to);to=setTimeout(()=>save(),800);};
   ['tD','tE','tS'].forEach(id=>q(id).addEventListener('input',upd));
   q('tF').onchange=()=>{const S=D().settings;S.toFino=q('tF').checked;if(S.toFino&&!S.toFinoFrom)S.toFinoFrom=TODAY();save(true);toast(S.toFino?'Платежи с сегодняшнего дня будут попадать в расходы':'Выключено');};
 }
@@ -526,10 +531,10 @@ function openLoanSheet(L,tab){
       <div class="field"><label>Тип</label><select id="fK">${Object.entries(KINDS).map(([k,v])=>`<option value="${k}">${v[1]} ${v[0]}</option>`).join('')}</select></div>
       <div class="field"><label>Банк</label><input id="fBank" placeholder="Halyk, Kaspi…"></div>
       <div class="field"><label>Валюта</label><select id="fCur">${Object.values(CUR).map(s=>`<option>${s}</option>`).join('')}</select></div>
-      <div class="field"><label>Сумма кредита</label><input id="fP" type="number" inputmode="numeric"></div>
-      <div class="field"><label>Ставка, % годовых</label><input id="fR" type="number" step="0.01" inputmode="decimal"></div>
-      <div class="field"><label>ГЭСВ, %</label><input id="fG" type="number" step="0.01" inputmode="decimal"></div>
-      <div class="field"><label>Срок, месяцев</label><input id="fN" type="number" inputmode="numeric"></div>
+      <div class="field"><label>Сумма кредита</label><input id="fP" type="text" inputmode="decimal" autocomplete="off"></div>
+      <div class="field"><label>Ставка, % годовых</label><input id="fR" type="text" inputmode="decimal" autocomplete="off"></div>
+      <div class="field"><label>ГЭСВ, %</label><input id="fG" type="text" inputmode="decimal" autocomplete="off"></div>
+      <div class="field"><label>Срок, месяцев</label><input id="fN" type="text" inputmode="decimal" autocomplete="off"></div>
       <div class="field"><label>Дата выдачи</label><input id="fI" type="date"></div>
       <div class="field"><label>Первый платёж</label><input id="fF" type="date"></div>
       <div class="field"><label>Тип платежей</label><select id="fT"><option value="annuity">Аннуитет (равные)</option><option value="diff">Дифференцированный</option></select></div>
@@ -539,18 +544,18 @@ function openLoanSheet(L,tab){
     const q=s=>sh.querySelector(s);
     const setTab=x=>{mode=x;q('#docP').style.display=x==='doc'?'':'none';q('#manP').style.display=x==='manual'?'':'none';sh.querySelectorAll('#mt button').forEach(b=>b.classList.toggle('on',b.dataset.t===x));};
     sh.querySelectorAll('#mt button').forEach(b=>b.onclick=()=>setTab(b.dataset.t)); setTab(mode);
-    const read=()=>{draft.name=q('#fName').value.trim();draft.ltype=q('#fK').value;draft.bank=q('#fBank').value.trim();draft.currency=q('#fCur').value;draft.principal=+q('#fP').value||0;draft.rate=+q('#fR').value||0;draft.gesv=+q('#fG').value||0;draft.termMonths=+q('#fN').value||0;draft.issueDate=q('#fI').value;draft.firstPaymentDate=q('#fF').value;draft.type=q('#fT').value;draft.notes=q('#fNotes').value.trim();};
-    const schN=()=>{const n=q('#schN');if(draft.schedule&&draft.schedule.length){n.innerHTML=`<div class="dnote good">${draft._ai?'✨ Распознано ИИ — проверь значения. ':''}✓ График из документа: ${draft.schedule.length} платежей (${fd(draft.schedule[0].d)} — ${fd(draft.schedule[draft.schedule.length-1].d)}). <button class="btn sm" id="dropS">Считать по параметрам</button></div>`;n.querySelector('#dropS').onclick=()=>{draft.schedule=null;schN();prev();};}else n.innerHTML='';};
+    const read=()=>{draft.name=q('#fName').value.trim();draft.ltype=q('#fK').value;draft.bank=q('#fBank').value.trim();draft.currency=q('#fCur').value;draft.principal=num(q('#fP').value)||0;draft.rate=num(q('#fR').value)||0;draft.gesv=num(q('#fG').value)||0;draft.termMonths=num(q('#fN').value)||0;draft.issueDate=q('#fI').value;draft.firstPaymentDate=q('#fF').value;draft.type=q('#fT').value;draft.notes=q('#fNotes').value.trim();};
+    const schN=()=>{const n=q('#schN');if(draft.schedule&&draft.schedule.length){n.innerHTML=`<div class="dnote good">${draft._ai?'✨ Распознано ИИ — проверь значения. ':''}${draft._rateCalc&&draft._gesvCalc?'📐 Ставка и ГЭСВ рассчитаны по графику. ':draft._rateCalc?'📐 Ставка рассчитана по графику. ':draft._gesvCalc?'📐 ГЭСВ рассчитана по графику. ':''}✓ График из документа: ${draft.schedule.length} платежей (${fd(draft.schedule[0].d)} — ${fd(draft.schedule[draft.schedule.length-1].d)}). <button class="btn sm" id="dropS">Считать по параметрам</button></div>`;n.querySelector('#dropS').onclick=()=>{draft.schedule=null;schN();prev();};}else n.innerHTML='';};
     const prev=()=>{read();const p=q('#fPrev');const s=(draft.principal||draft.schedule)?stats(draft,TODAY()):null;
       if(!s||!s.rows.length){p.innerHTML='Заполни сумму, ставку, срок и дату первого платежа — покажу расчёт.';return;}
       p.innerHTML=`Платёж ≈ <b>${money(s.base[0].pay,draft.currency)}</b> · переплата <b>${money(s.baseInt,draft.currency)}</b> · остаток сейчас <b>${money(s.balance,draft.currency)}</b> · оплачено ${s.paid.filter(r=>r.kind==='reg').length} из ${s.base.length}`;};
-    const fill=()=>{q('#fName').value=draft.name||'';q('#fK').value=kindOf(draft);q('#fBank').value=draft.bank||'';q('#fCur').value=draft.currency||'₸';q('#fP').value=draft.principal||'';q('#fR').value=draft.rate||'';q('#fG').value=draft.gesv||'';q('#fN').value=draft.termMonths||'';q('#fI').value=draft.issueDate||'';q('#fF').value=draft.firstPaymentDate||'';q('#fT').value=draft.type||'annuity';q('#fNotes').value=draft.notes||'';schN();prev();};
+    const fill=()=>{q('#fName').value=draft.name||'';q('#fK').value=kindOf(draft);q('#fBank').value=draft.bank||'';q('#fCur').value=draft.currency||'₸';q('#fP').value=draft.principal||'';q('#fR').value=draft.rate?String(draft.rate).replace('.',','):'';q('#fG').value=draft.gesv?String(draft.gesv).replace('.',','):'';q('#fN').value=draft.termMonths||'';q('#fI').value=draft.issueDate||'';q('#fF').value=draft.firstPaymentDate||'';q('#fT').value=draft.type||'annuity';q('#fNotes').value=draft.notes||'';schN();prev();};
     sh.querySelectorAll('#manP input,#manP select').forEach(i=>i.addEventListener('input',prev)); fill();
     q('#fSave').onclick=()=>{read(); if(!draft.name) draft.name=draft.bank?'Кредит '+draft.bank:KINDS[draft.ltype][0];
       const hs=draft.schedule&&draft.schedule.length;
       if(!hs&&!(draft.principal&&draft.termMonths&&draft.firstPaymentDate)){toast('Нужны сумма, срок и дата первого платежа');return;}
       if(hs&&!draft.principal) draft.principal=draft.schedule[0].bal+draft.schedule[0].prin;
-      const nl=JSON.parse(JSON.stringify(draft)); delete nl._ai; F().closeSheet(); st.loanId=nl.id; saveLoan(nl); toast(L?'Сохранено':'Долг добавлен');};
+      const nl=JSON.parse(JSON.stringify(draft)); delete nl._ai; delete nl._rateCalc; delete nl._gesvCalc; F().closeSheet(); st.loanId=nl.id; saveLoan(nl); toast(L?'Сохранено':'Долг добавлен');};
     let file=null; q('#file').onchange=()=>{file=q('#file').files[0];if(file)q('#docSt').textContent='Файл: '+file.name;};
     q('#readBtn').onclick=async()=>{const paste=q('#paste').value.trim();if(!file&&!paste){toast('Выбери файл или вставь текст');return;}
       const b=q('#readBtn'),s=q('#docSt');b.disabled=true;
@@ -594,8 +599,17 @@ async function parseDoc(src,status){
   const t=res.text||'',a=t.indexOf('{'),b=t.lastIndexOf('}'); if(a<0) throw new Error('Не нашёл данные кредита в документе.');
   try{return JSON.parse(t.slice(a,b+1));}catch(e){const cut=t.slice(a),k=cut.lastIndexOf(']');try{const o=JSON.parse(cut.slice(0,k+1)+']}');o._truncated=true;return o;}catch(e2){throw new Error('Ответ получился неполным. Загрузи только страницы с графиком.');}}
 }
-const num=v=>{if(v==null||v==='')return 0;if(typeof v==='number')return v;const n=parseFloat(String(v).replace(/[\s ]/g,'').replace(',','.'));return isNaN(n)?0:n;};
 const nd=v=>{if(!v)return '';const s=String(v);let m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);if(m)return m[0];m=s.match(/(\d{2})[./](\d{2})[./](\d{4})/);return m?`${m[3]}-${m[2]}-${m[1]}`:'';};
+function deriveRates(sc,principal,issue){
+  if(!sc||sc.length<2||!(principal>0)) return {};
+  const start=issue&&issue<sc[0].d?issue:addMonths(sc[0].d,-1);
+  const rs=[]; let prevD=sc[0].d, prevB=sc[0].bal;
+  for(let i=1;i<sc.length;i++){ const r=sc[i]; const dd=days(prevD,r.d); if(prevB>1&&dd>0&&r.int>0) rs.push(dd>=25&&dd<=35?r.int/prevB*1200:r.int/prevB*365/dd*100); prevD=r.d; prevB=r.bal; }
+  rs.sort((a,b)=>a-b); const rate=rs.length?rs[Math.floor(rs.length/2)]:0;
+  const f=R=>{ let v=-principal; for(const r of sc) v+=r.pay/Math.pow(1+R,days(start,r.d)/365); return v; };
+  let lo=0,hi=5,gesv=0; if(f(lo)>0&&f(hi)<0){ for(let k=0;k<80;k++){ const m=(lo+hi)/2; if(f(m)>0) lo=m; else hi=m; } gesv=(lo+hi)/2*100; }
+  return {rate:Math.round(rate*100)/100, gesv:Math.round(gesv*100)/100};
+}
 function applyParsed(dr,o){
   const sc=(o.schedule||[]).map(r=>Array.isArray(r)?{d:nd(r[0]),pay:num(r[1]),prin:num(r[2]),int:num(r[3]),bal:num(r[4])}:{d:nd(r.d||r.date),pay:num(r.pay),prin:num(r.prin),int:num(r.int),bal:num(r.bal)}).filter(r=>r.d&&r.pay>0).sort((a,b)=>a.d<b.d?-1:1);
   for(const r of sc){if(!r.prin&&r.int)r.prin=r.pay-r.int;if(!r.int&&r.prin)r.int=Math.max(0,r.pay-r.prin);}
@@ -606,8 +620,10 @@ function applyParsed(dr,o){
   if(sc.length>=2&&!o._truncated){
     if(!sc.some(r=>r.bal>0)){let B=dr.principal||sum(sc,r=>r.prin);for(const r of sc){B-=r.prin;r.bal=Math.max(0,B);}}
     dr.schedule=sc; if(!dr.principal)dr.principal=Math.round((sc[0].bal+sc[0].prin)*100)/100; dr.firstPaymentDate=sc[0].d; dr.termMonths=num(o.termMonths)||sc.length;
-    if(!dr.rate&&dr.principal)dr.rate=Math.round(sc[0].int/dr.principal*1200*100)/100;
-    if(sc.every(r=>r.int<0.5))dr.rate=0;
+    const dv=deriveRates(sc,dr.principal,dr.issueDate);
+    if(!dr.rate&&dv.rate){dr.rate=dv.rate;dr._rateCalc=true;}
+    if(!dr.gesv&&dv.gesv){dr.gesv=dv.gesv;dr._gesvCalc=true;}
+    if(sc.every(r=>r.int<0.5)){dr.rate=0;dr.gesv=0;}
   } else { dr.termMonths=num(o.termMonths)||dr.termMonths; dr.firstPaymentDate=nd(o.firstPaymentDate)||dr.firstPaymentDate; }
 }
 
