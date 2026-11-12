@@ -1994,14 +1994,14 @@ function openAgeSheet(after){
   });
 }
 function openJuniorConsentSheet(after,fromAge){
-  openSheet((fromAge!==false?'<button class="back-btn" id="jcBack">← Изменить возраст</button>':'')+'<h3>Fino Junior</h3>'+
+  openSheet((fromAge!==false?'<button class="back-btn" id="jcBack">← Изменить возраст</button>':'')+'<h3>Fino Junior'+(fromAge===false?'<button class="x" data-close aria-label="Закрыть">'+I.x+'</button>':'')+'</h3>'+
     '<div class="muted" style="margin-bottom:10px">Попроси родителя отметить второй пункт. Всё хранится только на этом телефоне.</div>'+
     '<div class="cons">'+
       '<label><input type="checkbox" id="jcT"><span>Мне 14–17 лет, я прочитал(а) <a href="legal.html#junior" target="_blank" rel="noopener">правила</a></span></label>'+
       '<label><input type="checkbox" id="jcP"><span><b>Родитель:</b> разрешаю ребёнку пользоваться Fino Junior и хранить данные на этом телефоне (<a href="legal.html#junior" target="_blank" rel="noopener">подробнее</a>)</span></label>'+
       '<label><input type="checkbox" id="jcE"><span>Понимаю, что это обучение, а не финансовые советы</span></label>'+
     '</div><div class="sheet-actions"><button class="btn dark" id="jcGo" disabled style="width:100%">Начать</button></div>',sh=>{
-    sh.dataset.nodismiss='1';
+    if(fromAge!==false) sh.dataset.nodismiss='1';
     const jb=sh.querySelector('#jcBack'); if(jb) jb.onclick=()=>{ closeSheet(); setTimeout(()=>openAgeSheet(after),250); };
     const ids=['jcT','jcP','jcE'], go=sh.querySelector('#jcGo');
     ids.forEach(i=>sh.querySelector('#'+i).addEventListener('change',()=>{ go.disabled=!ids.every(x=>sh.querySelector('#'+x).checked); }));
@@ -2023,7 +2023,7 @@ function leaveJunior(){
 }
 function openConsentSheet(after,fromAge){
   const html=(fromAge?'<button class="back-btn" id="cBack">← Изменить возраст</button>':'')+'<div class="welcome-logo"><img class="logo-ic" src="icon.svg" alt="Fino" width="72" height="72"></div>'+
-    '<h3>'+(fromAge?'Добро пожаловать в Fino':'Полная версия Fino')+'</h3>'+
+    '<h3>'+(fromAge?'Добро пожаловать в Fino':'Полная версия Fino')+(fromAge?'':'<button class="x" data-close aria-label="Закрыть">'+I.x+'</button>')+'</h3>'+
     '<div class="muted" style="margin-bottom:10px">Отметьте три пункта, чтобы начать.</div>'+
     '<div class="cons">'+
       '<label><input type="checkbox" id="cT"><span>Мне есть 18 лет, я принимаю <a href="legal.html#terms" target="_blank" rel="noopener">правила пользования</a></span></label>'+
@@ -2033,7 +2033,7 @@ function openConsentSheet(after,fromAge){
     '<div class="muted" style="font-size:12px;margin-bottom:12px">Передумаете — отключите в Настройках → Документы.</div>'+
     '<div class="sheet-actions"><button class="btn dark" id="cGo" disabled style="width:100%">Продолжить</button></div>';
   openSheet(html,sh=>{
-    sh.dataset.nodismiss='1';
+    if(fromAge) sh.dataset.nodismiss='1';
     const bk=sh.querySelector('#cBack'); if(bk) bk.onclick=()=>{ closeSheet(); setTimeout(()=>openAgeSheet(after),250); };
     const ids=['cT','cP','cD'], go=sh.querySelector('#cGo');
     const upd=()=>{ go.disabled=!ids.every(i=>sh.querySelector('#'+i).checked); };
