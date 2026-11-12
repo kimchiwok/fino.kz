@@ -210,6 +210,7 @@ body.junior .set-row:has([data-act="statement"]),body.junior .set-row:has([data-
 .overlay.mini .sheet{cursor:pointer;padding-top:10px;padding-bottom:calc(14px + var(--safe-b))}
 .overlay.mini .sheet>*:not(.grab){display:none!important}
 .overlay.mini .sheet::after{content:'Окно свёрнуто · нажмите, чтобы вернуться';display:block;text-align:center;font-size:13px;font-weight:500;color:var(--ink-2);padding:2px 0 2px}
+.back-btn{color:var(--s1);font-weight:600;font-size:14px;padding:4px 0;margin:-4px 0 6px;display:inline-flex;align-items:center;gap:4px;min-height:36px}
 /* ---------- Layout ---------- */
 .app{min-height:100vh;display:flex}
 .side{display:none}
@@ -1900,6 +1901,7 @@ function openReceiptConfirm(data,total,preview,ocr){
 
 /* ================= Actions ================= */
 const actions={
+  tojunior:()=>openJuniorConsentSheet(()=>{ toast('Включён Fino Junior'); go('home'); },false),
   grownup:()=>openConsentSheet(()=>toast('Добро пожаловать в полную версию Fino!')),
   revoke:()=>openRevokeSheet(),
   asignin:()=>cloudSignIn('apple'),
@@ -1974,12 +1976,12 @@ function openAgeSheet(after){
     '<button id="age14"><span>🧒</span><div>Мне 14–17 лет<small>Fino Junior: карманные деньги, копилка и уроки финграмотности</small></div></button></div>'+
     '<div class="muted" style="font-size:12px">Если вам меньше 14 лет, попросите родителей пользоваться Fino вместе с вами.</div>',sh=>{
     sh.dataset.nodismiss='1';
-    sh.querySelector('#age18').onclick=()=>{ closeSheet(); setTimeout(()=>openConsentSheet(after),250); };
+    sh.querySelector('#age18').onclick=()=>{ closeSheet(); setTimeout(()=>openConsentSheet(after,true),250); };
     sh.querySelector('#age14').onclick=()=>{ closeSheet(); setTimeout(()=>openJuniorConsentSheet(after),250); };
   });
 }
-function openJuniorConsentSheet(after){
-  openSheet('<h3>Fino Junior<button class="x" id="jcBack" aria-label="Назад">'+I.x+'</button></h3>'+
+function openJuniorConsentSheet(after,fromAge){
+  openSheet((fromAge!==false?'<button class="back-btn" id="jcBack">← Изменить возраст</button>':'')+'<h3>Fino Junior</h3>'+
     '<div class="muted" style="margin-bottom:10px">Попроси родителя отметить второй пункт. Всё хранится только на этом телефоне.</div>'+
     '<div class="cons">'+
       '<label><input type="checkbox" id="jcT"><span>Мне 14–17 лет, я прочитал(а) <a href="legal.html#junior" target="_blank" rel="noopener">правила</a></span></label>'+
@@ -1987,7 +1989,7 @@ function openJuniorConsentSheet(after){
       '<label><input type="checkbox" id="jcE"><span>Понимаю, что это обучение, а не финансовые советы</span></label>'+
     '</div><div class="sheet-actions"><button class="btn dark" id="jcGo" disabled style="width:100%">Начать</button></div>',sh=>{
     sh.dataset.nodismiss='1';
-    sh.querySelector('#jcBack').onclick=()=>{ closeSheet(); setTimeout(()=>openAgeSheet(after),250); };
+    const jb=sh.querySelector('#jcBack'); if(jb) jb.onclick=()=>{ closeSheet(); setTimeout(()=>openAgeSheet(after),250); };
     const ids=['jcT','jcP','jcE'], go=sh.querySelector('#jcGo');
     ids.forEach(i=>sh.querySelector('#'+i).addEventListener('change',()=>{ go.disabled=!ids.every(x=>sh.querySelector('#'+x).checked); }));
     go.onclick=()=>{ S.settings.consent={version:CONSENT_VERSION,mode:'junior',at:new Date().toISOString(),teen:true,parent:true,edu:true,ua:(navigator.userAgent||'').slice(0,120)};
@@ -1995,6 +1997,7 @@ function openJuniorConsentSheet(after){
   });
 }
 function enterJunior(){
+  try{ if(window.__finoCloud&&window.__finoCloud.state.user) window.__finoCloud.signOut(); }catch(e){}
   S.settings.mode='junior';
   const JC=window.FinoJunior.JUNIOR_CATS;
   if(!S.ops.length) S.cats=JSON.parse(JSON.stringify(JC));
@@ -2005,9 +2008,9 @@ function leaveJunior(){
   for(const t of ['expense','income']) for(const c of DEFAULT_CATS[t]) if(!S.cats[t].some(x=>x.id===c.id)) S.cats[t].push(Object.assign({},c));
   S.settings.mode='adult';
 }
-function openConsentSheet(after){
-  const html='<div class="welcome-logo"><img class="logo-ic" src="icon.svg" alt="Fino" width="72" height="72"></div>'+
-    '<h3>Добро пожаловать в Fino</h3>'+
+function openConsentSheet(after,fromAge){
+  const html=(fromAge?'<button class="back-btn" id="cBack">← Изменить возраст</button>':'')+'<div class="welcome-logo"><img class="logo-ic" src="icon.svg" alt="Fino" width="72" height="72"></div>'+
+    '<h3>'+(fromAge?'Добро пожаловать в Fino':'Полная версия Fino')+'</h3>'+
     '<div class="muted" style="margin-bottom:10px">Отметьте три пункта, чтобы начать.</div>'+
     '<div class="cons">'+
       '<label><input type="checkbox" id="cT"><span>Мне есть 18 лет, я принимаю <a href="legal.html#terms" target="_blank" rel="noopener">правила пользования</a></span></label>'+
@@ -2018,6 +2021,7 @@ function openConsentSheet(after){
     '<div class="sheet-actions"><button class="btn dark" id="cGo" disabled style="width:100%">Продолжить</button></div>';
   openSheet(html,sh=>{
     sh.dataset.nodismiss='1';
+    const bk=sh.querySelector('#cBack'); if(bk) bk.onclick=()=>{ closeSheet(); setTimeout(()=>openAgeSheet(after),250); };
     const ids=['cT','cP','cD'], go=sh.querySelector('#cGo');
     const upd=()=>{ go.disabled=!ids.every(i=>sh.querySelector('#'+i).checked); };
     ids.forEach(i=>sh.querySelector('#'+i).addEventListener('change',upd));
@@ -2038,6 +2042,7 @@ function renderLegalCard(){
   const c=S.settings.consent;
   return '<div class="card"><h2>Документы</h2>'+
     '<div class="legal-links" style="margin-bottom:10px"><a href="legal.html#terms" target="_blank" rel="noopener">Пользовательское соглашение</a><a href="legal.html#privacy" target="_blank" rel="noopener">Политика конфиденциальности</a><a href="legal.html#consent" target="_blank" rel="noopener">Согласие на обработку ПД</a><a href="legal.html#disclaimer" target="_blank" rel="noopener">Отказ от ответственности</a>'+(isJunior()?'<a href="legal.html#junior" target="_blank" rel="noopener">Правила Fino Junior</a>':'')+'</div>'+
+    (!isJunior()?'<div class="set-row"><div><div class="k">Возраст: 18+</div><div class="d">Ошиблись при выборе или Fino пользуется подросток 14–17 лет? Переключитесь на Fino Junior.</div></div><button class="btn sm" data-act="tojunior">Fino Junior</button></div>':'')+
     (isJunior()?'<div class="set-row"><div><div class="k">Режим Fino Junior</div><div class="d">Для 14–17 лет. Исполнилось 18? Переходи на полную версию — все записи сохранятся.</div></div><button class="btn sm" data-act="grownup">Мне 18</button></div>':'')+
     '<div class="set-row"><div><div class="k">Согласие на обработку данных</div><div class="d">'+(c&&c.at?'Дано '+new Date(c.at).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})+' · редакция '+esc(c.version):'Не дано')+'</div></div><button class="btn sm danger" data-act="revoke">Отозвать</button></div></div>';
 }
