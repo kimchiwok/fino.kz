@@ -1,7 +1,7 @@
 {
   "name": "Fino — учет доходов и расходов",
   "short_name": "Fino",
-  "description": "Личный учет доходов и расходов. Made in Kazakhstan.",
+  "description": "Личный учет доходов и расходов. Казахстанский сервис.",
   "lang": "ru",
   "start_url": "./index.html",
   "scope": "./",
