@@ -5,7 +5,14 @@ import { getAuth, GoogleAuthProvider, OAuthProvider, signInWithPopup, signInWith
 import { getFirestore, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 /* Вставь сюда конфиг из Firebase Console → Project settings → Your apps → Web app (</> Fino) */
-const FIREBASE_CONFIG = null;
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDtvwBCGjE0ZJiJvvo075UNGvaTaXkEEog",
+  authDomain: "fino-79e8a.firebaseapp.com",
+  projectId: "fino-79e8a",
+  storageBucket: "fino-79e8a.firebasestorage.app",
+  messagingSenderId: "543440357593",
+  appId: "1:543440357593:web:47e81b34f72de0378516c8"
+};
 /* пример:
 const FIREBASE_CONFIG = {
   apiKey: "AIza...",
