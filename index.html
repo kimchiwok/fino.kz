@@ -157,6 +157,21 @@ button{cursor:pointer;border:0;background:none;padding:0}
 .theme-seg button{padding:7px 11px}
 body.on-debts .fab{display:none}
 .gacc{display:flex;align-items:center;gap:10px}.gacc img{width:34px;height:34px;border-radius:99px}
+
+/* ---------- Логотип ---------- */
+.logo-ic,.brand-ic{display:block;border-radius:22%}
+.brand{line-height:0}
+#splash .logo-ic{width:132px;height:132px;box-shadow:0 18px 40px rgba(0,0,0,.18)}
+.welcome-logo{margin-bottom:14px}
+:root[data-theme="dark"] .logo-ic,:root[data-theme="dark"] .brand-ic{box-shadow:0 0 0 1px rgba(255,255,255,.14)}
+/* ---------- Согласие ---------- */
+.cons{display:grid;gap:10px;margin:6px 0 14px}
+.cons label{display:flex;gap:10px;align-items:flex-start;font-size:13.5px;line-height:1.4;cursor:pointer;background:var(--surface);border-radius:12px;padding:11px 12px}
+.cons input{width:19px;height:19px;flex:none;margin-top:1px;accent-color:var(--ink)}
+.cons a,.legal-links a{color:var(--s1);text-decoration:underline;text-underline-offset:2px}
+.cons .req{color:var(--danger)}
+.legal-links{display:flex;gap:12px;flex-wrap:wrap;font-size:13px}
+.gbtn{display:flex;gap:8px}
 /* ---------- Layout ---------- */
 .app{min-height:100vh;display:flex}
 .side{display:none}
@@ -489,14 +504,14 @@ details.paste summary{cursor:pointer;font-size:13px;font-weight:500;color:var(--
 
 <div id="splash" role="button" aria-label="Пропустить заставку">
   <div class="wrap">
-    <div class="logo">Fino</div>
+    <img class="logo logo-ic" src="icon.svg" alt="Fino" width="132" height="132">
     <div class="made">made in Kazakhstan</div>
   </div>
 </div>
 
 <div class="app">
   <aside class="side">
-    <div class="brand">Fino</div>
+    <div class="brand"><img class="brand-ic" src="icon.svg" alt="Fino" width="48" height="48"></div>
     <button class="nav" data-view="home"></button>
     <button class="nav" data-view="ops"></button>
     <button class="nav" data-view="stats"></button>
@@ -509,7 +524,7 @@ details.paste summary{cursor:pointer;font-size:13px;font-weight:500;color:var(--
 
   <main class="main">
     <header class="top">
-      <div class="brand">Fino</div>
+      <div class="brand"><img class="brand-ic" src="icon.svg" alt="Fino" width="38" height="38"></div>
       <div class="period" id="period">
         <button class="arrow" id="pPrev" aria-label="Предыдущий период"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="m15 18-6-6 6-6"/></svg></button>
         <button class="label" id="pLabel" aria-label="Изменить период"></button>
@@ -903,6 +918,7 @@ function renderSettings(){
       '<div class="set-row"><div><div class="k">Операций</div><div class="d">'+(window.__finoCloud&&window.__finoCloud.state.user?'Синхронизируются с аккаунтом Google':'Хранятся только в этом браузере')+'</div></div><b class="num">'+S.ops.length+'</b></div>'+
     '</div>'+
     renderCloudCard()+
+    renderLegalCard()+
     '<div class="card"><h2>Данные</h2>'+
       '<div class="set-row"><div><div class="k">Экспорт</div><div class="d">Резервная копия или таблица для Excel</div></div><div style="display:flex;gap:6px"><button class="btn sm" data-act="exportJson">JSON</button><button class="btn sm" data-act="exportCsv">CSV</button></div></div>'+
       '<div class="set-row"><div><div class="k">Импорт</div><div class="d">Из файла JSON/CSV или вставкой текста</div></div><button class="btn sm" data-act="import">Импорт</button></div>'+
@@ -1622,7 +1638,7 @@ function greetHtml(t){
   return '<div class="greet"><div class="g1">'+greetWord()+(n?', '+esc(n):'')+'</div><div class="g2">'+sub+'</div></div>';
 }
 function openNameSheet(first){
-  const html=(first?'<div class="welcome-logo">Fino</div>':'')+
+  const html=(first?'<div class="welcome-logo"><img class="logo-ic" src="icon.svg" alt="Fino" width="72" height="72"></div>':'')+
     '<h3>'+(first?'Как к вам обращаться?':'Ваше имя')+(first?'':'<button class="x" data-close aria-label="Закрыть">'+I.x+'</button>')+'</h3>'+
     '<div class="muted" style="margin-bottom:14px">'+(first?'Fino будет приветствовать вас по имени. Имя хранится только на этом устройстве.':'Так Fino будет к вам обращаться.')+'</div>'+
     '<div class="field"><input id="nmIn" maxlength="30" autocomplete="given-name" placeholder="Например, Айгерим" value="'+esc(userName())+'"></div>'+
@@ -1828,7 +1844,9 @@ function openReceiptConfirm(data,total,preview,ocr){
 
 /* ================= Actions ================= */
 const actions={
-  gsignin:()=>{ const c=window.__finoCloud; if(!c||!c.state.configured){ toast('Синхронизация ещё не настроена'); return; } c.signIn().catch(e=>{ if(e&&e.code!=='auth/popup-closed-by-user') toast('Не удалось войти: '+((e&&e.code)||'ошибка')); }); },
+  revoke:()=>openRevokeSheet(),
+  asignin:()=>cloudSignIn('apple'),
+  gsignin:()=>cloudSignIn('google'),
   gsignout:()=>{ const c=window.__finoCloud; if(c) c.signOut().then(()=>toast('Вы вышли. Данные остались на устройстве')); },
   receipt:()=>openReceiptSheet(),
   dups:()=>openDupFinder(),
@@ -1887,6 +1905,45 @@ try{ if('serviceWorker' in navigator && window.isSecureContext && window.self===
 
 let rzT=null; window.addEventListener('resize',()=>{ clearTimeout(rzT); rzT=setTimeout(()=>{ if(view==='stats'&&!overlayEl) render(); },200); });
 
+
+/* ================= Согласие и документы ================= */
+const CONSENT_VERSION='2026-11-12';
+function hasConsent(){ const c=S.settings.consent; return !!(c&&c.version===CONSENT_VERSION&&c.terms&&c.pd&&c.disclaimer); }
+function openConsentSheet(after){
+  const html='<div class="welcome-logo"><img class="logo-ic" src="icon.svg" alt="Fino" width="72" height="72"></div>'+
+    '<h3>Добро пожаловать в Fino</h3>'+
+    '<div class="muted" style="margin-bottom:10px">Перед началом работы ознакомьтесь с документами и подтвердите согласие. Обязательные пункты отмечены <span style="color:var(--danger)">*</span>.</div>'+
+    '<div class="cons">'+
+      '<label><input type="checkbox" id="cT"><span>Мне исполнилось 18 лет. Я ознакомился и принимаю <a href="legal.html#terms" target="_blank" rel="noopener">Пользовательское соглашение</a> <span class="req">*</span></span></label>'+
+      '<label><input type="checkbox" id="cP"><span>Свободно, своей волей и в своём интересе даю <a href="legal.html#consent" target="_blank" rel="noopener">согласие на сбор и обработку персональных данных</a> в соответствии с <a href="legal.html#privacy" target="_blank" rel="noopener">Политикой конфиденциальности</a> и Законом РК «О персональных данных и их защите» <span class="req">*</span></span></label>'+
+      '<label><input type="checkbox" id="cD"><span>Понимаю, что расчёты и рекомендации Fino носят информационный характер и <a href="legal.html#disclaimer" target="_blank" rel="noopener">не являются финансовой, инвестиционной или юридической консультацией</a> <span class="req">*</span></span></label>'+
+    '</div>'+
+    '<div class="muted" style="font-size:12px;margin-bottom:12px">Согласие можно отозвать в любой момент: Настройки → Документы.</div>'+
+    '<div class="sheet-actions"><button class="btn dark" id="cGo" disabled style="width:100%">Продолжить</button></div>';
+  openSheet(html,sh=>{
+    sh.dataset.nodismiss='1';
+    const ids=['cT','cP','cD'], go=sh.querySelector('#cGo');
+    const upd=()=>{ go.disabled=!ids.every(i=>sh.querySelector('#'+i).checked); };
+    ids.forEach(i=>sh.querySelector('#'+i).addEventListener('change',upd));
+    go.onclick=()=>{ S.settings.consent={version:CONSENT_VERSION,at:new Date().toISOString(),terms:true,pd:true,disclaimer:true,ua:(navigator.userAgent||'').slice(0,120)};
+      persist(); closeSheet(); if(after) setTimeout(after,250); };
+  });
+}
+function openRevokeSheet(){
+  openSheet('<h3>Отозвать согласие?<button class="x" data-close aria-label="Закрыть">'+I.x+'</button></h3>'+
+    '<div class="muted" style="margin-bottom:14px">Мы прекратим обработку ваших данных: все операции, долги и настройки будут удалены с этого устройства'+(window.__finoCloud&&window.__finoCloud.state.user?' и из облака':'')+'. Действие нельзя отменить. Перед удалением можно сделать экспорт в Настройках → Данные.</div>'+
+    '<div class="sheet-actions"><button class="btn" data-close>Отмена</button><button class="btn dark" id="rvGo" style="background:var(--danger);color:#fff">Отозвать и удалить</button></div>',sh=>{
+    sh.querySelector('#rvGo').onclick=async()=>{ try{ if(window.__finoCloud&&window.__finoCloud.state.user){ await window.__finoCloud.deleteRemote(); await window.__finoCloud.signOut(); } }catch(e){}
+      try{ localStorage.removeItem(KEY); localStorage.removeItem('fino.sync.v1'); }catch(e){}
+      S=freshState(); normalizeS(); closeSheet(); render(); toast('Согласие отозвано, данные удалены'); setTimeout(()=>openConsentSheet(()=>openNameSheet(true)),600); };
+  });
+}
+function renderLegalCard(){
+  const c=S.settings.consent;
+  return '<div class="card"><h2>Документы</h2>'+
+    '<div class="legal-links" style="margin-bottom:10px"><a href="legal.html#terms" target="_blank" rel="noopener">Пользовательское соглашение</a><a href="legal.html#privacy" target="_blank" rel="noopener">Политика конфиденциальности</a><a href="legal.html#consent" target="_blank" rel="noopener">Согласие на обработку ПД</a><a href="legal.html#disclaimer" target="_blank" rel="noopener">Отказ от ответственности</a></div>'+
+    '<div class="set-row"><div><div class="k">Согласие на обработку данных</div><div class="d">'+(c&&c.at?'Дано '+new Date(c.at).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})+' · редакция '+esc(c.version):'Не дано')+'</div></div><button class="btn sm danger" data-act="revoke">Отозвать</button></div></div>';
+}
 /* ================= Тема, Долги, облако ================= */
 function applyTheme(){ let t=S.settings.theme||'system'; if(t==='system') t=(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';
   document.documentElement.dataset.theme=t; const m=document.querySelector('meta[name=theme-color]'); if(m) m.setAttribute('content',t==='dark'?'#121211':'#ffffff'); }
@@ -1895,15 +1952,28 @@ applyTheme();
 window.__fino={ S:()=>S, persist, render:()=>render(), toast, openSheet, closeSheet, loadScript, AI:()=>AI, scrollTop:()=>{ const sc=document.querySelector('.app'); if(sc) sc.scrollTop=0; } };
 window.__finoApplyRemote=json=>{ try{ S=JSON.parse(json); normalizeS(); applyTheme(); if(!overlayEl) render(); }catch(e){} };
 window.addEventListener('fino-cloud',()=>{ if(view==='settings'&&!overlayEl) render(); });
+function cloudSignIn(provider){
+  const c=window.__finoCloud; if(!c||!c.state.configured){ toast('Синхронизация ещё не настроена'); return; }
+  if(provider==='apple'&&!c.state.appleEnabled){ toast('Вход через Apple появится после подключения аккаунта разработчика Apple'); return; }
+  const go=()=>c.signIn(provider).catch(e=>{ if(e&&e.code!=='auth/popup-closed-by-user') toast('Не удалось войти: '+((e&&e.code)||'ошибка')); });
+  if(S.settings.cloudConsent&&S.settings.cloudConsent.version===CONSENT_VERSION){ go(); return; }
+  openSheet('<h3>Хранение данных в облаке<button class="x" data-close aria-label="Закрыть">'+I.x+'</button></h3>'+
+    '<div class="muted" style="margin-bottom:12px">Чтобы данные были на всех ваших устройствах, Fino сохранит их копию в облаке, привязанную к вашему аккаунту. Будут храниться: операции, категории, долги, настройки, а также имя и email аккаунта.</div>'+
+    '<div class="cons"><label><input type="checkbox" id="ccOk"><span>Даю согласие на хранение копии моих данных в облачном сервисе и на их трансграничную передачу, как описано в <a href="legal.html#privacy" target="_blank" rel="noopener">Политике конфиденциальности</a> <span class="req">*</span></span></label></div>'+
+    '<div class="sheet-actions"><button class="btn" data-close>Отмена</button><button class="btn dark" id="ccGo" disabled>Продолжить</button></div>',sh=>{
+    const ok=sh.querySelector('#ccOk'), b=sh.querySelector('#ccGo'); ok.onchange=()=>{ b.disabled=!ok.checked; };
+    b.onclick=()=>{ S.settings.cloudConsent={version:CONSENT_VERSION,at:new Date().toISOString()}; persist(); closeSheet(); go(); };
+  });
+}
 function renderCloudCard(){
   const c=window.__finoCloud, st=c&&c.state; let body;
-  if(!st||!st.configured) body='<div class="set-row"><div><div class="k">Аккаунт Google</div><div class="d">Синхронизация между устройствами ещё не настроена</div></div></div>';
-  else if(!st.user) body='<div class="set-row"><div><div class="k">Аккаунт Google</div><div class="d">Войдите, чтобы операции и долги сохранялись в облаке и были на всех устройствах</div></div><button class="btn sm dark" data-act="gsignin">Войти через Google</button></div>';
+  if(!st||!st.configured) body='<div class="set-row"><div><div class="k">Аккаунт Google / Apple</div><div class="d">Синхронизация между устройствами ещё не настроена</div></div></div>';
+  else if(!st.user) body='<div class="set-row"><div><div class="k">Аккаунт</div><div class="d">Войдите, чтобы операции и долги сохранялись в облаке и были на всех устройствах</div></div><div class="gbtn"><button class="btn sm dark" data-act="gsignin">Google</button><button class="btn sm dark" data-act="asignin">Apple</button></div></div>';
   else body='<div class="set-row"><div class="gacc">'+(st.user.photo?'<img src="'+esc(st.user.photo)+'" alt="" referrerpolicy="no-referrer">':'')+'<div><div class="k">'+esc(st.user.name||'Аккаунт Google')+'</div><div class="d">'+esc(st.user.email||'')+' · '+esc(c.statusText())+'</div></div></div><button class="btn sm" data-act="gsignout">Выйти</button></div>';
   return '<div class="card"><h2>Облако</h2>'+body+'</div>';
 }
 /* ================= Init ================= */
-window.__finoOnboard=()=>{ if(!S.settings.onboarded) openNameSheet(true); };
+window.__finoOnboard=()=>{ const next=()=>{ if(!S.settings.onboarded) openNameSheet(true); }; if(!hasConsent()) openConsentSheet(next); else next(); };
 if(splashDone) setTimeout(window.__finoOnboard,50);
 updatePeriodUI();
 const h=location.hash.slice(1);

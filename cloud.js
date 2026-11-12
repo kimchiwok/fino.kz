@@ -1,8 +1,8 @@
 /* Fino Cloud — вход через Google и синхронизация всех данных Fino (операции, категории, долги, настройки) через Firebase.
    Данные лежат в Firestore: fino_users/{uid}/apps/fino. Видит только владелец аккаунта. */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut as fbSignOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getAuth, GoogleAuthProvider, OAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut as fbSignOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 /* Вставь сюда конфиг из Firebase Console → Project settings → Your apps → Web app (</> Fino) */
 const FIREBASE_CONFIG = null;
@@ -17,10 +17,13 @@ const FIREBASE_CONFIG = {
 };
 */
 
+/* Вход через Apple: включи после настройки Sign in with Apple (Apple Developer + Firebase → Authentication → Apple) */
+const APPLE_ENABLED = false;
+
 const KEYS = { fino: 'fino.v1' };
 const META = 'fino.sync.v1';
 const MAX = 900000; // Firestore: документ до ~1 МБ
-const st = { configured: !!FIREBASE_CONFIG, user: null, status: FIREBASE_CONFIG ? 'out' : 'off', lastSync: null, error: null };
+const st = { appleEnabled: !!FIREBASE_CONFIG && APPLE_ENABLED, configured: !!FIREBASE_CONFIG, user: null, status: FIREBASE_CONFIG ? 'out' : 'off', lastSync: null, error: null };
 const emit = () => window.dispatchEvent(new CustomEvent('fino-cloud'));
 const meta = () => { try { return JSON.parse(localStorage.getItem(META) || '{}'); } catch (e) { return {}; } };
 const setMeta = m => { try { localStorage.setItem(META, JSON.stringify(m)); } catch (e) {} };
@@ -41,10 +44,18 @@ const api = {
     const m = meta(); m[k] = Date.now(); setMeta(m);
     if (st.user) { clearTimeout(timers[k]); timers[k] = setTimeout(() => push(k), 1200); }
   },
-  async signIn() {
+  async signIn(kind = 'google') {
     if (!st.configured) throw new Error('not_configured');
-    const provider = new GoogleAuthProvider();
-    provider.setCustomParameters({ prompt: 'select_account' });
+    let provider;
+    if (kind === 'apple') {
+      if (!st.appleEnabled) throw new Error('apple_not_configured');
+      provider = new OAuthProvider('apple.com');
+      provider.addScope('email'); provider.addScope('name');
+      provider.setCustomParameters({ locale: 'ru' });
+    } else {
+      provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+    }
     const standalone = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone;
     if (standalone) return signInWithRedirect(auth, provider);
     try { await signInWithPopup(auth, provider); }
@@ -54,7 +65,14 @@ const api = {
       throw e;
     }
   },
-  async signOut() { if (auth) await fbSignOut(auth); }
+  async signOut() { if (auth) await fbSignOut(auth); },
+  /* отзыв согласия: удалить облачную копию */
+  async deleteRemote() {
+    if (!st.user) return;
+    unsubs.forEach(u => u()); unsubs = [];
+    for (const k of Object.keys(KEYS)) await deleteDoc(doc(db, 'fino_users', st.user.uid, 'apps', k));
+    const m = meta(); if (m.linked) delete m.linked[st.user.uid]; setMeta(m);
+  }
 };
 window.__finoCloud = api;
 

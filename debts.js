@@ -540,7 +540,7 @@ function openLoanSheet(L,tab){
     const setTab=x=>{mode=x;q('#docP').style.display=x==='doc'?'':'none';q('#manP').style.display=x==='manual'?'':'none';sh.querySelectorAll('#mt button').forEach(b=>b.classList.toggle('on',b.dataset.t===x));};
     sh.querySelectorAll('#mt button').forEach(b=>b.onclick=()=>setTab(b.dataset.t)); setTab(mode);
     const read=()=>{draft.name=q('#fName').value.trim();draft.ltype=q('#fK').value;draft.bank=q('#fBank').value.trim();draft.currency=q('#fCur').value;draft.principal=+q('#fP').value||0;draft.rate=+q('#fR').value||0;draft.gesv=+q('#fG').value||0;draft.termMonths=+q('#fN').value||0;draft.issueDate=q('#fI').value;draft.firstPaymentDate=q('#fF').value;draft.type=q('#fT').value;draft.notes=q('#fNotes').value.trim();};
-    const schN=()=>{const n=q('#schN');if(draft.schedule&&draft.schedule.length){n.innerHTML=`<div class="dnote good">✓ График из документа: ${draft.schedule.length} платежей (${fd(draft.schedule[0].d)} — ${fd(draft.schedule[draft.schedule.length-1].d)}). <button class="btn sm" id="dropS">Считать по параметрам</button></div>`;n.querySelector('#dropS').onclick=()=>{draft.schedule=null;schN();prev();};}else n.innerHTML='';};
+    const schN=()=>{const n=q('#schN');if(draft.schedule&&draft.schedule.length){n.innerHTML=`<div class="dnote good">${draft._ai?'✨ Распознано ИИ — проверь значения. ':''}✓ График из документа: ${draft.schedule.length} платежей (${fd(draft.schedule[0].d)} — ${fd(draft.schedule[draft.schedule.length-1].d)}). <button class="btn sm" id="dropS">Считать по параметрам</button></div>`;n.querySelector('#dropS').onclick=()=>{draft.schedule=null;schN();prev();};}else n.innerHTML='';};
     const prev=()=>{read();const p=q('#fPrev');const s=(draft.principal||draft.schedule)?stats(draft,TODAY()):null;
       if(!s||!s.rows.length){p.innerHTML='Заполни сумму, ставку, срок и дату первого платежа — покажу расчёт.';return;}
       p.innerHTML=`Платёж ≈ <b>${money(s.base[0].pay,draft.currency)}</b> · переплата <b>${money(s.baseInt,draft.currency)}</b> · остаток сейчас <b>${money(s.balance,draft.currency)}</b> · оплачено ${s.paid.filter(r=>r.kind==='reg').length} из ${s.base.length}`;};
@@ -550,12 +550,12 @@ function openLoanSheet(L,tab){
       const hs=draft.schedule&&draft.schedule.length;
       if(!hs&&!(draft.principal&&draft.termMonths&&draft.firstPaymentDate)){toast('Нужны сумма, срок и дата первого платежа');return;}
       if(hs&&!draft.principal) draft.principal=draft.schedule[0].bal+draft.schedule[0].prin;
-      const nl=JSON.parse(JSON.stringify(draft)); F().closeSheet(); st.loanId=nl.id; saveLoan(nl); toast(L?'Сохранено':'Долг добавлен');};
+      const nl=JSON.parse(JSON.stringify(draft)); delete nl._ai; F().closeSheet(); st.loanId=nl.id; saveLoan(nl); toast(L?'Сохранено':'Долг добавлен');};
     let file=null; q('#file').onchange=()=>{file=q('#file').files[0];if(file)q('#docSt').textContent='Файл: '+file.name;};
     q('#readBtn').onclick=async()=>{const paste=q('#paste').value.trim();if(!file&&!paste){toast('Выбери файл или вставь текст');return;}
       const b=q('#readBtn'),s=q('#docSt');b.disabled=true;
       try{s.textContent='Читаю документ…';const src=file?await extractFile(file,m=>s.textContent=m):{text:paste,images:[]};s.textContent='Распознаю график…';
-        const res=await parseDoc(src,m=>s.textContent=m);applyParsed(draft,res);fill();setTab('manual');toast('Готово — проверь данные и сохрани');}
+        const res=await parseDoc(src,m=>s.textContent=m);draft._ai=!!F().AI().ready;applyParsed(draft,res);fill();setTab('manual');toast(draft._ai?'Распознано с помощью ИИ — проверь данные перед сохранением':'Готово — проверь данные и сохрани');}
       catch(e){s.innerHTML=`<span style="color:var(--danger)">${esc(e.message||'Не удалось распознать')}</span>`;}
       b.disabled=false;};
   });
